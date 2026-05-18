@@ -31,6 +31,9 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 
 import net.minecraft.util.ActionResult;
+
+
+
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 
@@ -87,7 +90,7 @@ public class MegaWeapons implements ModInitializer {
             ItemStack stack = player.getStackInHand(hand);
 
             if (world.isClient()) {
-                return net.minecraft.util.TypedActionResult.pass(stack);
+                return ActionResult.PASS;
             }
 
             // =================================================
@@ -108,7 +111,7 @@ public class MegaWeapons implements ModInitializer {
                         0.02
                 );
 
-                return net.minecraft.util.TypedActionResult.consume(stack);
+                return ActionResult.CONSUME;
             }
 
             // =================================================
@@ -175,13 +178,13 @@ public class MegaWeapons implements ModInitializer {
                         );
                     }
 
-                    return net.minecraft.util.TypedActionResult.success(stack);
+                    return ActionResult.SUCCESS;
                 }
 
-                return net.minecraft.util.TypedActionResult.pass(stack);
+                return ActionResult.PASS;
             }
 
-            return net.minecraft.util.TypedActionResult.pass(stack);
+            return ActionResult.PASS;
         });
 
         // =====================================================

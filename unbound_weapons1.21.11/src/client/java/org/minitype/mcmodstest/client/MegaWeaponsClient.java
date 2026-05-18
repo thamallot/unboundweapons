@@ -18,6 +18,7 @@ import org.lwjgl.glfw.GLFW;
 public class MegaWeaponsClient implements ClientModInitializer {
 
     private static KeyBinding dashKey;
+    private static long lastDashTime = 0;
 
     @Override
     public void onInitializeClient() {
@@ -56,6 +57,16 @@ public class MegaWeaponsClient implements ClientModInitializer {
                     return;
                 }
 
+                // DASH COOLDOWN
+                long now = System.currentTimeMillis();
+
+                if (now - lastDashTime < 5000) {
+                    return;
+                }
+
+                lastDashTime = now;
+
+                // DASH LOGIC
                 Vec3d look = mc.player.getRotationVector();
 
                 Vec3d dash = new Vec3d(
@@ -68,6 +79,13 @@ public class MegaWeaponsClient implements ClientModInitializer {
                         dash.x,
                         0.15,
                         dash.z
+                );
+
+
+                // COOLDOWN ANIMATION
+                mc.player.getItemCooldownManager().set(
+                        mc.player.getMainHandStack(),
+                        100
                 );
             }
         });
