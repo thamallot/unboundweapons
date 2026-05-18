@@ -1,4 +1,4 @@
-# Mega Weapons
+# Unbound Weapons
 
 A Fabric Minecraft mod focused on high-speed combat, weapon abilities, combo mechanics, and anime-inspired movement.
 
