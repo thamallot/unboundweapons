@@ -82,8 +82,8 @@ public class MegaWeapons implements ModInitializer {
 
 
         // =====================================================
-// USE ITEM CALLBACK
-// =====================================================
+        // USE ITEM CALLBACK
+        // =====================================================
 
         UseItemCallback.EVENT.register((player, world, hand) -> {
 
@@ -124,7 +124,8 @@ public class MegaWeapons implements ModInitializer {
                             stack.isOf(Items.IRON_SWORD) ||
                             stack.isOf(Items.GOLDEN_SWORD) ||
                             stack.isOf(Items.DIAMOND_SWORD) ||
-                            stack.isOf(Items.NETHERITE_SWORD)
+                            stack.isOf(Items.NETHERITE_SWORD) ||
+                            stack.isOf(Items.TRIDENT)
             ) {
 
                 // =============================================
@@ -155,7 +156,12 @@ public class MegaWeapons implements ModInitializer {
                         stack.set(MEGA_LEVEL, currentLevel + 1);
 
                         player.sendMessage(
-                                Text.literal("§6§lSWORD UPGRADED TO LEVEL " + (currentLevel + 1)),
+                                Text.literal(
+                                        "§6§l" +
+                                                stack.getName().getString().toUpperCase() +
+                                                " UPGRADED TO LEVEL " +
+                                                (currentLevel + 1)
+                                ),
                                 true
                         );
 
