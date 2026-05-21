@@ -55,7 +55,8 @@ Built for Fabric on Minecraft 1.21.1.
 
 1. Install Fabric Loader
 2. Install Fabric API
-3. Place the mod `.jar` into your mods folder
+3. Go to: https://modrinth.com/mod/unbound-weapons and download `.jar` file (can also be installed from the [Releases](https://github.com) Tab)
+4. Place the mod `.jar` into your mods folder
 
 ---
 
