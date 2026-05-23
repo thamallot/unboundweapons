@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.minitype.mcmodstest.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "TridentEntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
