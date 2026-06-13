@@ -1,3 +1,5 @@
+// DISCLAIMER: THIS FILE HAS NOTHING TO DO WITH THE MAIN MOD
+
 package org.minitype.mcmodstest;
 
 import net.fabricmc.api.ModInitializer;
