@@ -5,6 +5,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
@@ -18,34 +19,42 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 
 import org.lwjgl.glfw.GLFW;
+import org.minitype.mcmodstest.BlackFlashPayload;
 import org.minitype.mcmodstest.MegaWeapons;
 import org.minitype.mcmodstest.ModComponents;
+import org.minitype.mcmodstest.ModItems;
 
 public class MegaWeaponsClient implements ClientModInitializer {
 
     private static KeyBinding dashKey;
+    private static KeyBinding blackFlashKey;
     private static long lastDashTime = 0;
 
     @Override
     public void onInitializeClient() {
-        // =====================================================
-        // WEAPON LEVEL TOOLTIP
-        // =====================================================
-
         ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> {
+            // =====================================================
+            // UNBOUND TOKEN LORE
+            // =====================================================
+
+            if (stack.isOf(ModItems.MEGA_TOKEN)) {
+                lines.add(Text.literal("\u00A78A fragment of unbound combat energy."));
+                lines.add(Text.literal("\u00A77Used to strengthen weapons."));
+            }
+
+            // =====================================================
+            // WEAPON LEVEL TOOLTIP
+            // =====================================================
 
             int level = stack.getOrDefault(ModComponents.MEGA_LEVEL, 0);
 
             if (level > 0) {
-
-                lines.add(
-                        Text.literal("§6Mega Level: " + level)
-                );
+                lines.add(Text.literal("\u00A76Mega Level: " + level));
             }
         });
         dashKey = KeyBindingHelper.registerKeyBinding(
                 new KeyBinding(
-                        "key.unbound_weapons.dash",
+                        "key.unbnd_weapons.dash",
                         InputUtil.Type.KEYSYM,
                         GLFW.GLFW_KEY_R,
                         KeyBinding.Category.create(
@@ -54,7 +63,22 @@ public class MegaWeaponsClient implements ClientModInitializer {
                 )
         );
 
+        blackFlashKey = KeyBindingHelper.registerKeyBinding(
+                new KeyBinding(
+                        "key.unbnd_weapons.black_flash",
+                        InputUtil.Type.KEYSYM,
+                        GLFW.GLFW_KEY_V,
+                        KeyBinding.Category.create(
+                                Identifier.of("unbnd_weapons", "unbnd_weapons")
+                        )
+                )
+        );
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+
+            while (blackFlashKey.wasPressed()) {
+                ClientPlayNetworking.send(new BlackFlashPayload());
+            }
 
             while (dashKey.wasPressed()) {
 
@@ -74,6 +98,12 @@ public class MegaWeaponsClient implements ClientModInitializer {
                                 !mc.player.getMainHandStack().isOf(Items.DIAMOND_SWORD) &&
                                 !mc.player.getMainHandStack().isOf(Items.NETHERITE_SWORD)
                 ) {
+                    return;
+                }
+
+                int level = mc.player.getMainHandStack().getOrDefault(ModComponents.MEGA_LEVEL, 0);
+
+                if (level < 5) {
                     return;
                 }
 

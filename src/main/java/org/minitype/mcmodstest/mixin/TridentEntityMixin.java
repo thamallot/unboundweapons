@@ -32,7 +32,7 @@ public class TridentEntityMixin {
         double speed = velocity.length();
 
         // BONUS DAMAGE BASED ON SPEED
-        float bonusDamage = (float)(speed * 5);
+        float bonusDamage = (float)(speed * 4);
 
         // Direct extra damage
         if (trident.getEntityWorld() instanceof ServerWorld serverWorld) {
