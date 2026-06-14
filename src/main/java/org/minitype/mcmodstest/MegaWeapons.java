@@ -62,7 +62,7 @@ public class MegaWeapons implements ModInitializer {
     // Combo resets after 3 seconds
     private static final long COMBO_RESET_TIME = 3000;
     private static final int BLACK_FLASH_CHARGE_HITS = 5;
-    private static final float BLACK_FLASH_BONUS_DAMAGE = 8.0f;
+    private static final float BLACK_FLASH_BONUS_DAMAGE = 5.0f;
     private static final int GUARD_BREAK_REQUIRED_CRITS = 3;
     private static final int GUARD_BREAK_LEVEL_REQUIREMENT = 10;
     private static final long GUARD_BREAK_CHAIN_RESET_TIME = 5000;
@@ -943,7 +943,7 @@ public class MegaWeapons implements ModInitializer {
             );
 
             target.takeKnockback(
-                    2.0,
+                    3.5,
                     player.getX() - target.getX(),
                     player.getZ() - target.getZ()
             );
