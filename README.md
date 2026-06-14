@@ -93,6 +93,7 @@ Default Key:
 | Black Flash Arm | V |
 
 Once armed, the next sword hit triggers the ability
+The Black Flash Ability does powerful knockback to the target as well as bonus damage
 
 ---
 
