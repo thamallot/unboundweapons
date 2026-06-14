@@ -178,7 +178,7 @@ public class MegaWeapons implements ModInitializer {
             }
 
             player.sendMessage(
-                    Text.literal("§b§l+1 UNBOUND TOKEN"),
+                    Text.literal("§b§l+1UNBDT"),
                     false
             );
 
