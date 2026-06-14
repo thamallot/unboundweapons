@@ -59,10 +59,12 @@ public class MegaWeapons implements ModInitializer {
     private static final Map<UUID, Integer> comboCounter = new HashMap<>();
     private static final Map<UUID, Long> lastHitTime = new HashMap<>();
 
-    // Combo resets after 3 seconds
-    private static final long COMBO_RESET_TIME = 3000;
+    // Black Flash tuning
+    private static final long BLACK_FLASH_CHAIN_RESET_TIME = 3000;
     private static final int BLACK_FLASH_CHARGE_HITS = 5;
-    private static final float BLACK_FLASH_BONUS_DAMAGE = 8.0f;
+    private static final float BLACK_FLASH_BONUS_DAMAGE = 6.7f;
+
+    // Guard Break tuning
     private static final int GUARD_BREAK_REQUIRED_CRITS = 3;
     private static final int GUARD_BREAK_LEVEL_REQUIREMENT = 10;
     private static final long GUARD_BREAK_CHAIN_RESET_TIME = 5000;
@@ -134,10 +136,25 @@ public class MegaWeapons implements ModInitializer {
         );
 
         // =====================================================
+        // BLACK FLASH DAMAGE INTERRUPT
+        // =====================================================
+
+        ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamageTaken, damageTaken, blocked) -> {
+
+            if (entity instanceof ServerPlayerEntity player && damageTaken > 0.0f) {
+                resetBlackFlashCharge(player, true);
+            }
+        });
+
+        // =====================================================
         // TOKEN ECONOMY
         // =====================================================
 
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
+
+            if (entity instanceof ServerPlayerEntity deadPlayer) {
+                resetBlackFlashCharge(deadPlayer, false);
+            }
 
             // Must be killed by a player
             if (!(damageSource.getAttacker() instanceof ServerPlayerEntity player)) {
@@ -432,9 +449,7 @@ public class MegaWeapons implements ModInitializer {
                                 ImpactType.BLACK_FLASH
                         );
 
-                        blackFlashArmed.remove(uuid);
-                        comboCounter.put(uuid, 0);
-                        lastHitTime.put(uuid, now);
+                        resetBlackFlashCharge(uuid);
 
                         return ActionResult.PASS;
                     }
@@ -443,7 +458,7 @@ public class MegaWeapons implements ModInitializer {
                     // BUILD BLACK FLASH CHARGE
                     // =================================================
 
-                    if (now - lastHit > COMBO_RESET_TIME) {
+                    if (now - lastHit > BLACK_FLASH_CHAIN_RESET_TIME) {
                         hits = 1;
                         blackFlashArmed.remove(uuid);
                     } else {
@@ -856,10 +871,8 @@ public class MegaWeapons implements ModInitializer {
 
             UUID uuid = handler.player.getUuid();
 
-            comboCounter.remove(uuid);
-            lastHitTime.remove(uuid);
+            resetBlackFlashCharge(uuid);
             tridentChargeStart.remove(uuid);
-            blackFlashArmed.remove(uuid);
             guardBreakArmed.remove(uuid);
             guardBreakCritChain.remove(uuid);
             lastGuardBreakCritTime.remove(uuid);
@@ -868,6 +881,26 @@ public class MegaWeapons implements ModInitializer {
 
     private boolean isAxe(ItemStack stack) {
         return stack.getItem() instanceof net.minecraft.item.AxeItem;
+    }
+
+    private void resetBlackFlashCharge(UUID uuid) {
+        comboCounter.remove(uuid);
+        lastHitTime.remove(uuid);
+        blackFlashArmed.remove(uuid);
+    }
+
+    private void resetBlackFlashCharge(ServerPlayerEntity player, boolean notify) {
+        UUID uuid = player.getUuid();
+        boolean hadCharge = comboCounter.getOrDefault(uuid, 0) > 0 || blackFlashArmed.contains(uuid);
+
+        resetBlackFlashCharge(uuid);
+
+        if (notify && hadCharge) {
+            player.sendMessage(
+                    Text.literal("§8Black Flash charge broken."),
+                    true
+            );
+        }
     }
 
     private boolean isCriticalHit(ServerPlayerEntity player) {
@@ -943,7 +976,7 @@ public class MegaWeapons implements ModInitializer {
             );
 
             target.takeKnockback(
-                    2.0,
+                    3.0,
                     player.getX() - target.getX(),
                     player.getZ() - target.getZ()
             );
