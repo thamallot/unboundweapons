@@ -1,0 +1,28 @@
+ABILITIES
+
+Passives abilities:
+Spear: Gives slight speed increase
+Axe: "Post Mortem Annihilation" drops a splash potion to hurt your enemies after death
+Bow : 10% chance you don't use up an arrow when shooting
+Mace: Player gains a small absorption effect
+
+Second Abilities:
+Bow: Gives spectral effect to certain people within a radius
+Mace: Earthquake effect that does damage to surrounding players
+
+Third Abilities
+Mace: XX% chance the mace hit summons lightning and damamges the opponent aswell as doing bonus damage
+
+
+BALANCE CHANGES
+
+Token system rework creating monster tokens (dropped by hostile mobs) and player tokens
+(dropped/somehow acquired by killing players) the two will have very different values and will
+be required in different amounts for weapon upgrades
+
+Leveling rework will create a level cap and change ability strength (nerf or buff)
+
+EASTER EGGS
+
+There is a 1% chance that if a player says "ooga booga monkey" in the chat a charged creeper
+will spawn right in front of every player on the server that will immediately explode
