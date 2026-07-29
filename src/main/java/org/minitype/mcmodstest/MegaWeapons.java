@@ -277,6 +277,7 @@ public class MegaWeapons implements ModInitializer {
                             stack.isOf(Items.GOLDEN_SWORD) ||
                             stack.isOf(Items.DIAMOND_SWORD) ||
                             stack.isOf(Items.NETHERITE_SWORD) ||
+                            stack.isOf(Items.COPPER_SWORD) ||
                             stack.isOf(Items.TRIDENT) ||
                             isAxe(stack) ||
                             stack.isOf(Items.COPPER_SWORD)
@@ -945,7 +946,7 @@ public class MegaWeapons implements ModInitializer {
             );
 
             target.takeKnockback(
-                    3.5,
+                    3.3,
                     player.getX() - target.getX(),
                     player.getZ() - target.getZ()
             );
