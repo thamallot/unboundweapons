@@ -12,6 +12,8 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.projectile.TridentEntity;
@@ -20,6 +22,9 @@ import net.minecraft.enchantment.Enchantments;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.KineticWeaponComponent;
+import net.minecraft.registry.tag.ItemTags;
 
 import net.minecraft.particle.ParticleTypes;
 
@@ -27,6 +32,8 @@ import net.minecraft.registry.RegistryKeys;
 
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -34,10 +41,12 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -51,6 +60,28 @@ public class MegaWeapons implements ModInitializer {
     private static final Map<UUID, Long> guardBreakArmed = new HashMap<>();
     private static final Map<UUID, Integer> guardBreakCritChain = new HashMap<>();
     private static final Map<UUID, Long> lastGuardBreakCritTime = new HashMap<>();
+    private static final Map<UUID, SkewerDashState> skewerDashes = new HashMap<>();
+    private static final Map<UUID, Long> lastSkewerDashTime = new HashMap<>();
+
+    private static final double SKEWER_DASH_SPEED = 1.374;
+    private static final double SKEWER_DASH_MAX_DISTANCE = 12.0;
+    private static final int SKEWER_DASH_MAX_TICKS = 20;
+    private static final int SKEWER_DASH_LEVEL_REQUIREMENT = 10;
+    private static final long SKEWER_DASH_COOLDOWN_MS = 5000;
+    private static final float SKEWER_WALL_DAMAGE_MIN = 1.0f;
+    private static final float SKEWER_WALL_DAMAGE_MAX = 10.0f;
+
+    private static final class SkewerDashState {
+        private final Vec3d start;
+        private final Vec3d direction;
+        private UUID targetUuid;
+        private int ticks;
+
+        private SkewerDashState(Vec3d start, Vec3d direction) {
+            this.start = start;
+            this.direction = direction;
+        }
+    }
 
     // =========================================================
     // COMBO TRACKING
@@ -96,6 +127,11 @@ public class MegaWeapons implements ModInitializer {
                 BlackFlashPayload.CODEC
         );
 
+        PayloadTypeRegistry.playC2S().register(
+                SkewerDashPayload.ID,
+                SkewerDashPayload.CODEC
+        );
+
         // =====================================================
         // BLACK FLASH KEYBIND RECEIVER
         // =====================================================
@@ -131,6 +167,11 @@ public class MegaWeapons implements ModInitializer {
                         );
                     }
                 }
+        );
+
+        ServerPlayNetworking.registerGlobalReceiver(
+                SkewerDashPayload.ID,
+                (payload, context) -> startSkewerDash(context.player())
         );
 
         // =====================================================
@@ -280,6 +321,7 @@ public class MegaWeapons implements ModInitializer {
                             stack.isOf(Items.COPPER_SWORD) ||
                             stack.isOf(Items.TRIDENT) ||
                             isAxe(stack) ||
+                            stack.isIn(ItemTags.SPEARS) ||
                             stack.isOf(Items.COPPER_SWORD)
             ) {
 
@@ -773,6 +815,8 @@ public class MegaWeapons implements ModInitializer {
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
 
+            tickSkewerDashes(server);
+
             for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
 
                 // Must be actively using item
@@ -866,7 +910,254 @@ public class MegaWeapons implements ModInitializer {
             guardBreakArmed.remove(uuid);
             guardBreakCritChain.remove(uuid);
             lastGuardBreakCritTime.remove(uuid);
+            skewerDashes.remove(uuid);
+            lastSkewerDashTime.remove(uuid);
         });
+    }
+
+    private static void startSkewerDash(ServerPlayerEntity player) {
+        UUID uuid = player.getUuid();
+        long now = System.currentTimeMillis();
+
+        if (skewerDashes.containsKey(uuid)
+                || now - lastSkewerDashTime.getOrDefault(uuid, 0L) < SKEWER_DASH_COOLDOWN_MS) {
+            return;
+        }
+
+        int spearSlot = -1;
+        int firstSpearSlot = -1;
+
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack candidate = player.getInventory().getStack(slot);
+
+            if (candidate.isIn(ItemTags.SPEARS)) {
+                if (firstSpearSlot < 0) {
+                    firstSpearSlot = slot;
+                }
+
+                if (candidate.getOrDefault(ModComponents.MEGA_LEVEL, 0)
+                        >= SKEWER_DASH_LEVEL_REQUIREMENT) {
+                    spearSlot = slot;
+                    break;
+                }
+            }
+        }
+
+        if (firstSpearSlot < 0) {
+            player.sendMessage(Text.literal("§7Place a spear in your hotbar to use Skewer Dash."), true);
+            return;
+        }
+
+        if (spearSlot < 0) {
+            player.sendMessage(
+                    Text.literal("§7Skewer Dash unlocks when a spear reaches Mega Level 10."),
+                    true
+            );
+            return;
+        }
+
+        player.getInventory().setSelectedSlot(spearSlot);
+        player.networkHandler.sendPacket(new UpdateSelectedSlotS2CPacket(spearSlot));
+
+        Vec3d look = player.getRotationVector();
+        Vec3d horizontal = new Vec3d(look.x, 0.0, look.z);
+
+        if (horizontal.lengthSquared() < 0.0001) {
+            return;
+        }
+
+        Vec3d direction = horizontal.normalize();
+        ItemStack spear = player.getInventory().getSelectedStack();
+
+        lastSkewerDashTime.put(uuid, now);
+        skewerDashes.put(uuid, new SkewerDashState(player.getEntityPos(), direction));
+
+        player.setVelocity(
+                direction.x * SKEWER_DASH_SPEED,
+                Math.max(player.getVelocity().y, 0.1),
+                direction.z * SKEWER_DASH_SPEED
+        );
+        player.velocityDirty = true;
+        player.networkHandler.sendPacket(new EntityVelocityUpdateS2CPacket(player));
+        spear.use(player.getEntityWorld(), player, Hand.MAIN_HAND);
+        player.getItemCooldownManager().set(spear, (int) (SKEWER_DASH_COOLDOWN_MS / 50));
+        player.sendMessage(Text.literal("§6§lSKEWER DASH"), true);
+
+        player.getEntityWorld().playSound(
+                null,
+                player.getX(),
+                player.getY(),
+                player.getZ(),
+                SoundEvents.ITEM_SPEAR_LUNGE_3,
+                SoundCategory.PLAYERS,
+                1.0f,
+                1.0f
+        );
+    }
+
+    private static void tickSkewerDashes(net.minecraft.server.MinecraftServer server) {
+        var iterator = skewerDashes.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, SkewerDashState> entry = iterator.next();
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(entry.getKey());
+            SkewerDashState state = entry.getValue();
+
+            if (player == null || !player.isAlive()) {
+                iterator.remove();
+                continue;
+            }
+
+            ServerWorld world = player.getEntityWorld();
+            Vec3d velocity = player.getVelocity();
+            double horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            boolean hitWall = player.horizontalCollision && state.ticks > 0;
+
+            ItemStack spear = player.getMainHandStack();
+
+            if (!spear.isIn(ItemTags.SPEARS)) {
+                player.clearActiveItem();
+                iterator.remove();
+                continue;
+            }
+
+            if (!hitWall) {
+                Vec3d dashVelocity = new Vec3d(
+                        state.direction.x * SKEWER_DASH_SPEED,
+                        Math.max(velocity.y, 0.0),
+                        state.direction.z * SKEWER_DASH_SPEED
+                );
+
+                player.setVelocity(dashVelocity);
+                player.velocityDirty = true;
+                player.networkHandler.sendPacket(new EntityVelocityUpdateS2CPacket(player));
+
+                KineticWeaponComponent kineticWeapon = spear.get(DataComponentTypes.KINETIC_WEAPON);
+
+                if (kineticWeapon != null) {
+                    int fullyChargedUseTime = Math.max(
+                            0,
+                            spear.getMaxUseTime(player) - kineticWeapon.getUseTicks()
+                    );
+
+                    kineticWeapon.usageTick(
+                            spear,
+                            fullyChargedUseTime,
+                            player,
+                            EquipmentSlot.MAINHAND
+                    );
+                }
+            }
+
+            if (state.targetUuid == null) {
+                Entity target = world.getOtherEntities(
+                                player,
+                                player.getBoundingBox().stretch(state.direction.multiply(1.5)).expand(0.6),
+                                entity -> entity instanceof LivingEntity
+                                        && entity.isAlive()
+                                        && entity.isAttackable()
+                                        && !entity.isSpectator()
+                                        && !player.isTeammate(entity)
+                        ).stream()
+                        .findFirst()
+                        .orElse(null);
+
+                if (target instanceof LivingEntity livingTarget) {
+                    state.targetUuid = livingTarget.getUuid();
+                }
+            }
+
+            LivingEntity carried = findLivingEntity(world, state.targetUuid);
+
+            if (!hitWall && carried != null && carried.isAlive()) {
+                Vec3d carryPosition = player.getEntityPos()
+                        .add(state.direction.multiply(1.15))
+                        .add(0.0, 0.1, 0.0);
+
+                carried.requestTeleport(carryPosition.x, carryPosition.y, carryPosition.z);
+                carried.setVelocity(player.getVelocity());
+                carried.velocityDirty = true;
+            }
+
+            if (hitWall) {
+                if (carried != null && carried.isAlive()) {
+                    double distanceTravelled = Math.sqrt(
+                            player.getEntityPos().squaredDistanceTo(state.start)
+                    );
+                    double dashProgress = Math.min(
+                            1.0,
+                            distanceTravelled / SKEWER_DASH_MAX_DISTANCE
+                    );
+                    float bonusDamage = (float) (SKEWER_WALL_DAMAGE_MAX
+                            - (SKEWER_WALL_DAMAGE_MAX - SKEWER_WALL_DAMAGE_MIN) * dashProgress);
+
+                    carried.damage(
+                            world,
+                            player.getDamageSources().playerAttack(player),
+                            bonusDamage
+                    );
+
+                    player.sendMessage(
+                            Text.literal(
+                                    "§6Skewer Dash wall bonus: §c+"
+                                            + String.format(Locale.ROOT, "%.1f", bonusDamage)
+                                            + " damage"
+                            ),
+                            false
+                    );
+
+                    world.playSound(
+                            null,
+                            carried.getX(),
+                            carried.getY(),
+                            carried.getZ(),
+                            SoundEvents.BLOCK_ANVIL_LAND,
+                            SoundCategory.PLAYERS,
+                            0.8f,
+                            1.4f
+                    );
+                    world.spawnParticles(
+                            ParticleTypes.CRIT,
+                            carried.getX(),
+                            carried.getBodyY(0.5),
+                            carried.getZ(),
+                            20,
+                            0.4,
+                            0.4,
+                            0.4,
+                            0.2
+                    );
+                }
+
+                player.setVelocity(0.0, player.getVelocity().y, 0.0);
+                player.velocityDirty = true;
+                player.networkHandler.sendPacket(new EntityVelocityUpdateS2CPacket(player));
+                player.clearActiveItem();
+                iterator.remove();
+                continue;
+            }
+
+            state.ticks++;
+
+            boolean reachedMaxDistance = player.getEntityPos().squaredDistanceTo(state.start)
+                    >= SKEWER_DASH_MAX_DISTANCE * SKEWER_DASH_MAX_DISTANCE;
+            boolean dashExpired = state.ticks >= SKEWER_DASH_MAX_TICKS;
+            boolean lostMomentum = state.ticks > 2 && horizontalSpeed < 0.15;
+
+            if (reachedMaxDistance || dashExpired || lostMomentum) {
+                player.clearActiveItem();
+                iterator.remove();
+            }
+        }
+    }
+
+    private static LivingEntity findLivingEntity(ServerWorld world, UUID uuid) {
+        if (uuid == null) {
+            return null;
+        }
+
+        Entity entity = world.getEntity(uuid);
+        return entity instanceof LivingEntity living ? living : null;
     }
 
     private boolean isAxe(ItemStack stack) {
@@ -1060,6 +1351,28 @@ public class MegaWeapons implements ModInitializer {
                         1.2f
                 );
             }
+        }
+
+        // =====================================================
+        // SPEAR MILESTONES
+        // =====================================================
+
+        if (stack.isIn(ItemTags.SPEARS) && newLevel == SKEWER_DASH_LEVEL_REQUIREMENT) {
+            player.sendMessage(
+                    Text.literal("§6§lSKEWER DASH UNLOCKED"),
+                    false
+            );
+
+            player.sendMessage(
+                    Text.literal("§7Press Dash with a spear in your hotbar to skewer an enemy."),
+                    false
+            );
+
+            player.playSound(
+                    SoundEvents.ENTITY_PLAYER_LEVELUP,
+                    1.0f,
+                    1.0f
+            );
         }
 
         // =====================================================
