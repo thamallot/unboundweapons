@@ -12,6 +12,7 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 
 import net.minecraft.item.Items;
+import net.minecraft.registry.tag.ItemTags;
 
 import net.minecraft.text.Text;
 
@@ -23,6 +24,7 @@ import org.minitype.mcmodstest.BlackFlashPayload;
 import org.minitype.mcmodstest.MegaWeapons;
 import org.minitype.mcmodstest.ModComponents;
 import org.minitype.mcmodstest.ModItems;
+import org.minitype.mcmodstest.SkewerDashPayload;
 
 public class MegaWeaponsClient implements ClientModInitializer {
 
@@ -85,6 +87,23 @@ public class MegaWeaponsClient implements ClientModInitializer {
                 MinecraftClient mc = MinecraftClient.getInstance();
 
                 if (mc.player == null) return;
+
+                // Spears use the same remappable ability key as sword dash.
+                // The server selects the first spear in the hotbar and owns
+                // all movement, collision, and damage for Skewer Dash.
+                boolean hasSpearInHotbar = false;
+
+                for (int slot = 0; slot < 9; slot++) {
+                    if (mc.player.getInventory().getStack(slot).isIn(ItemTags.SPEARS)) {
+                        hasSpearInHotbar = true;
+                        break;
+                    }
+                }
+
+                if (hasSpearInHotbar) {
+                    ClientPlayNetworking.send(new SkewerDashPayload());
+                    continue;
+                }
 
                 // Must sprint
                 if (!mc.player.isSprinting()) return;

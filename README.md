@@ -78,6 +78,14 @@ Default key:
 
 The dash adds fast movement to combat without replacing Minecraft’s normal movement system.
 
+### Skewer Dash
+
+At Mega Level 10, pressing the remappable Dash key with an upgraded spear available in the hotbar activates **Skewer Dash**. The ability automatically selects the spear, instantly begins its fully charged right-click attack, and launches the player forward with maximum vanilla Lunge force even when the spear does not have the Lunge enchantment. All vanilla spear materials are supported.
+
+The first enemy struck takes the spear's normal attack damage and is carried in front of the player until the dash ends. Colliding with a wall while carrying an enemy deals an additional 1–10 damage. Early wall impacts deal more bonus damage, while impacts later in the dash deal less. The exact bonus is reported in chat when it lands.
+
+Skewer Dash has a 5-second cooldown and uses the same keybind as Sword Dash.
+
 ---
 
 ### Sword Combo System
