@@ -2,11 +2,11 @@
 
 Unbound Weapons is a lightweight Fabric combat mod designed to make Minecraft combat faster, more exciting, and more progression-based while keeping the core feel of vanilla Minecraft intact.
 
-Instead of adding tons of new weapons or completely replacing vanilla combat, Unbound Weapons enhances existing tools like swords, axes, and tridents with new abilities, upgrades, movement options, and combat rewards.
+Instead of adding tons of new weapons or completely replacing vanilla combat, Unbound Weapons enhances existing tools like swords, axes, and tridents and more with new abilities, upgrades, movement options, and combat rewards.
 
 The goal is simple:
 
-**Make combat more fun without turning Minecraft into a totally different game.**
+**Make combat more fun without totally changing Minecraft.**
 
 ---
 
@@ -21,7 +21,11 @@ Upgraded weapons store their own level, which can be seen in the item tooltip. H
 Current upgradeable weapons include:
 
 - Swords
+- Axe
 - Tridents
+- Spears
+- Maces
+- Bows
 
 More weapon types may be expanded in future updates.
 
@@ -29,7 +33,7 @@ More weapon types may be expanded in future updates.
 
 ### Unbound Tokens
 
-Unbound Tokens are the core progression currency of the mod. They are dropped (sometimes) by hostile mobs and players upon death and are used to upgrade weapons.
+Unbound Tokens are the core progression currency of the mod. They are dropped by hostile mobs and players upon death (at a specific drop rate). The tokens are used to upgrade weapons.
 
 ---
 
