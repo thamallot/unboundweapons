@@ -25,6 +25,7 @@ import net.minecraft.enchantment.EnchantmentHelper;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.item.ArrowItem;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.KineticWeaponComponent;
 import net.minecraft.registry.tag.ItemTags;
@@ -113,6 +114,7 @@ public class MegaWeapons implements ModInitializer {
     private static final int VOLLEY_ARROW_COST = 24;
     private static final int VOLLEY_INFINITY_ARROW_COST = 7;
     private static final float VOLLEY_UPWARD_SPEED = (float) SKEWER_DASH_SPEED;
+    private static final double VOLLEY_STRAIGHT_UP_THRESHOLD = 0.95;
 
     private static final class SkewerDashState {
         private final Vec3d start;
@@ -913,12 +915,12 @@ public class MegaWeapons implements ModInitializer {
         });
 
         ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
-            if (entity instanceof ArrowEntity
+            if (entity instanceof PersistentProjectileEntity
                     && volleyGeneratedArrows.remove(entity.getUuid())) {
                 return;
             }
 
-            if (entity instanceof ArrowEntity arrow
+            if (entity instanceof PersistentProjectileEntity arrow
                     && arrow.getOwner() instanceof ServerPlayerEntity player
                     && arrow.getWeaponStack().isOf(Items.BOW)
                     && volleyArmed.contains(player.getUuid())) {
@@ -1207,10 +1209,15 @@ public class MegaWeapons implements ModInitializer {
 
     private static void triggerVolleyOrPowerShot(
             ServerPlayerEntity player,
-            ArrowEntity primaryArrow,
+            PersistentProjectileEntity primaryArrow,
             ServerWorld world
     ) {
-        Vec3d aimPoint = player.raycast(64.0, 1.0f, false).getPos();
+        Vec3d primaryVelocity = primaryArrow.getVelocity();
+        boolean shotStraightUp = primaryVelocity.lengthSquared() > 0.001
+                && primaryVelocity.normalize().y >= VOLLEY_STRAIGHT_UP_THRESHOLD;
+        Vec3d aimPoint = shotStraightUp
+                ? player.getEntityPos()
+                : player.raycast(64.0, 1.0f, false).getPos();
 
         if (hasVolleyObstruction(world, aimPoint)) {
             primaryArrow.setVelocity(primaryArrow.getVelocity().multiply(4.0));
@@ -1231,6 +1238,13 @@ public class MegaWeapons implements ModInitializer {
         }
 
         ItemStack bow = primaryArrow.getWeaponStack().copy();
+        ItemStack ammunition = primaryArrow.getItemStack().copy();
+        ammunition.setCount(1);
+
+        if (!(ammunition.getItem() instanceof ArrowItem arrowItem)) {
+            return;
+        }
+
         var infinity = world.getRegistryManager()
                 .getOrThrow(RegistryKeys.ENCHANTMENT)
                 .getOrThrow(Enchantments.INFINITY);
@@ -1272,15 +1286,15 @@ public class MegaWeapons implements ModInitializer {
                 int height = 7 + world.getRandom().nextInt(9);
                 double y = aimPoint.y + height;
                 ItemStack enchantedBow = bow.copy();
+                ItemStack volleyAmmunition = ammunition.copy();
 
-                ArrowEntity volleyArrow = new ArrowEntity(
+                PersistentProjectileEntity volleyArrow = arrowItem.createArrow(
                         world,
-                        x,
-                        y,
-                        z,
-                        new ItemStack(Items.ARROW),
+                        volleyAmmunition,
+                        player,
                         enchantedBow
                 );
+                volleyArrow.setPosition(x, y, z);
                 volleyArrow.setOwner(player);
                 volleyArrow.pickupType = PersistentProjectileEntity.PickupPermission.DISALLOWED;
                 volleyGeneratedArrows.add(volleyArrow.getUuid());
@@ -1309,6 +1323,11 @@ public class MegaWeapons implements ModInitializer {
                 3.0,
                 0.05
         );
+
+        if (shotStraightUp) {
+            primaryArrow.discard();
+        }
+
         player.sendMessage(Text.literal("§6§lARROW VOLLEY"), true);
         player.playSound(SoundEvents.ENTITY_ARROW_SHOOT, 1.0f, 0.6f);
     }
