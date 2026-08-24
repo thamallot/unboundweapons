@@ -29,18 +29,7 @@ More weapon types may be expanded in future updates.
 
 ### Unbound Tokens
 
-Unbound Tokens are the core progression currency of the mod.
-
-They are:
-
-- Custom items
-- Separate from vanilla gold nuggets
-- Glowing with an enchantment-style glint
-- Earned from hostile mobs
-- Used to upgrade weapons
-- Displayed with custom name and lore
-
-Tokens are no longer tied to gold, meaning players must actually fight mobs to progress instead of mining or farming gold.
+Unbound Tokens are the core progression currency of the mod. They are dropped (sometimes) by hostile mobs and players upon death and are used to upgrade weapons.
 
 ---
 
